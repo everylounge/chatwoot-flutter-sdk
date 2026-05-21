@@ -21,6 +21,7 @@ export 'client/domain/data/chatwoot_repository.dart';
 export 'client/domain/model/chatwoot_connection_state.dart';
 export 'client/domain/model/chatwoot_state.dart';
 export 'client/domain/model/conversation/chatwoot_conversation.dart';
+export 'client/domain/model/conversation/chatwoot_conversation_exception.dart';
 export 'client/domain/model/message/attachment.dart';
 export 'client/domain/model/message/chatwoot_message.dart';
 export 'client/domain/model/session/authorization_creds.dart';

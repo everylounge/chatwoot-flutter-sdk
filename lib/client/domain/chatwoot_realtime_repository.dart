@@ -13,6 +13,7 @@ import 'package:chatwoot_sdk/client/domain/data/chatwoot_cable.dart';
 import 'package:chatwoot_sdk/client/domain/data/chatwoot_repository.dart';
 import 'package:chatwoot_sdk/client/domain/model/chatwoot_connection_state.dart';
 import 'package:chatwoot_sdk/client/domain/model/conversation/chatwoot_conversation.dart';
+import 'package:chatwoot_sdk/client/domain/model/conversation/chatwoot_conversation_exception.dart';
 import 'package:chatwoot_sdk/client/domain/model/message/attachment.dart';
 import 'package:chatwoot_sdk/client/domain/model/message/chatwoot_message.dart';
 import 'package:chatwoot_sdk/client/domain/model/message/message_sender.dart';
@@ -171,12 +172,14 @@ class ChatwootRealtimeRepository implements ChatwootRepository, ChatwootCable {
   Future<ChatwootConversation> resolveConversation({
     required String sourceId,
     required ChatwootConversationId conversationId,
-  }) async {
-    await _api.toggleConversationResolved(sourceId, conversationId.value);
-    final dto = await _api.getConversation(sourceId, conversationId.value);
-
-    return dto.toDomainConversation();
-  }
+  }) => _withConversation404(
+    conversationId: conversationId,
+    action: () async {
+      await _api.toggleConversationResolved(sourceId, conversationId.value);
+      final dto = await _api.getConversation(sourceId, conversationId.value);
+      return dto.toDomainConversation();
+    },
+  );
 
   @override
   Future<void> sendMessage({
@@ -206,13 +209,18 @@ class ChatwootRealtimeRepository implements ChatwootRepository, ChatwootCable {
     );
 
     try {
-      await _api.createMessage(
-        sourceId,
-        conversationId.value,
-        content: content,
-        echoId: echoId,
-        attachments: attachments,
+      await _withConversation404(
+        conversationId: conversationId,
+        action: () => _api.createMessage(
+          sourceId,
+          conversationId.value,
+          content: content,
+          echoId: echoId,
+          attachments: attachments,
+        ),
       );
+    } on ChatwootConversationException$NotFound {
+      rethrow;
     } on Object {
       _localEvents.add(
         ChatwootCableEvent$Message$Updated(
@@ -253,13 +261,18 @@ class ChatwootRealtimeRepository implements ChatwootRepository, ChatwootCable {
 
     try {
       final files = message.attachments.whereType<Attachment$File>().map((a) => a.file).toList();
-      await _api.createMessage(
-        sourceId,
-        conversationId.value,
-        content: message.content,
-        echoId: message.echoId,
-        attachments: files,
+      await _withConversation404(
+        conversationId: conversationId,
+        action: () => _api.createMessage(
+          sourceId,
+          conversationId.value,
+          content: message.content,
+          echoId: message.echoId,
+          attachments: files,
+        ),
       );
+    } on ChatwootConversationException$NotFound {
+      rethrow;
     } on Object {
       _localEvents.add(
         ChatwootCableEvent$Message$Updated(
@@ -285,21 +298,40 @@ class ChatwootRealtimeRepository implements ChatwootRepository, ChatwootCable {
   Future<void> markConversationRead({
     required String sourceId,
     required ChatwootConversationId conversationId,
-  }) {
-    return _api.updateConversationLastSeen(sourceId, conversationId.value);
-  }
+  }) => _withConversation404(
+    conversationId: conversationId,
+    action: () => _api.updateConversationLastSeen(sourceId, conversationId.value),
+  );
 
   @override
   Future<void> toggleTyping({
     required String sourceId,
     required ChatwootConversationId conversationId,
     required bool isTyping,
-  }) {
-    return _api.toggleConversationTyping(
+  }) => _withConversation404(
+    conversationId: conversationId,
+    action: () => _api.toggleConversationTyping(
       sourceId,
       conversationId.value,
       isTyping: isTyping,
-    );
+    ),
+  );
+
+  Future<T> _withConversation404<T>({
+    required ChatwootConversationId conversationId,
+    required Future<T> Function() action,
+  }) async {
+    try {
+      return await action();
+    } on ChatwootApiException catch (error) {
+      if (error.statusCode == 404) {
+        throw ChatwootConversationException$NotFound(
+          conversationId: conversationId,
+          cause: error,
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<ChatwootCableEvent?> _mapSocketEvent(ChatwootSocketEvent event) async {

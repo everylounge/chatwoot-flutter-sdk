@@ -60,3 +60,12 @@ class ChatwootState$Conversation$Updated extends ChatwootState$Conversation {
     required super.conversation,
   });
 }
+
+class ChatwootState$Conversation$Deleted extends ChatwootState {
+  const ChatwootState$Conversation$Deleted({
+    required super.conversations,
+    required this.conversationId,
+  });
+
+  final ChatwootConversationId conversationId;
+}

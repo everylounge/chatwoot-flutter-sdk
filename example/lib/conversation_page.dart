@@ -94,12 +94,26 @@ class _ConversationChatPageState extends State<ConversationChatPage> {
   }
 
   void _onClientState(ChatwootState state) {
-    _latestConversation = state.conversations.firstWhere((c) => c.id == widget.conversationId);
+    if (state case ChatwootState$Conversation$Deleted(:final conversationId)
+        when conversationId == widget.conversationId) {
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    final conversation = state.conversations.where((c) => c.id == widget.conversationId).firstOrNull;
+    if (conversation == null) {
+      return;
+    }
+    _latestConversation = conversation;
     switch (state) {
       case ChatwootState$ConversationsLoaded(:final conversations):
         _syncConversationList(conversations);
       case ChatwootState$Conversation(:final conversation) when conversation.id == widget.conversationId:
         _syncConversation(conversation);
+      case ChatwootState$Conversation$Deleted():
+        return;
       case ChatwootState$Conversation():
         return;
       case ChatwootState$Message$New(:final conversationId, :final message)
@@ -217,6 +231,23 @@ class _ConversationChatPageState extends State<ConversationChatPage> {
     }
   }
 
+  Future<void> _sendTextMessage(String text) async {
+    unawaited(_signalTyping(false));
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+
+    try {
+      await widget.client.sendMessage(
+        conversationId: widget.conversationId,
+        content: trimmed,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Message: $e')));
+      }
+    }
+  }
+
   Future<void> _retryFailed(Message uiMessage) async {
     final conv = _latestConversation;
     if (conv == null) return;
@@ -327,15 +358,7 @@ class _ConversationChatPageState extends State<ConversationChatPage> {
         chatController: _chatController,
         theme: ChatTheme.light(),
         onMessageSend: (text) {
-          unawaited(_signalTyping(false));
-          final trimmed = text.trim();
-          if (trimmed.isEmpty) return;
-          unawaited(
-            widget.client.sendMessage(
-              conversationId: widget.conversationId,
-              content: trimmed,
-            ),
-          );
+          unawaited(_sendTextMessage(text));
         },
         onAttachmentTap: _pickAndSendAttachments,
         onMessageTap: _onMessageTap,
