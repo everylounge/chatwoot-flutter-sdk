@@ -18,6 +18,7 @@ export 'client/domain/chatwoot_client_impl.dart';
 export 'client/domain/chatwoot_realtime_repository.dart';
 export 'client/domain/data/chatwoot_cable.dart';
 export 'client/domain/data/chatwoot_repository.dart';
+export 'client/domain/logger/chatwoot_logger.dart';
 export 'client/domain/model/chatwoot_connection_state.dart';
 export 'client/domain/model/chatwoot_state.dart';
 export 'client/domain/model/conversation/chatwoot_conversation.dart';
