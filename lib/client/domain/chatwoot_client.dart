@@ -31,7 +31,9 @@ abstract interface class ChatwootClient {
 
   Stream<ChatwootConnectionState> get connectionState;
 
-  Future<ChatwootConversation> createConversation();
+  Future<ChatwootConversation> createConversation({
+    Map<String, Object?> customAttributes = const {},
+  });
 
   Future<void> resolveConversation({
     required ChatwootConversationId id,

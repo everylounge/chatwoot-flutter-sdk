@@ -358,8 +358,13 @@ class ChatwootClientImpl implements ChatwootClient {
   }
 
   @override
-  Future<ChatwootConversation> createConversation() async {
-    final created = await _repository.createConversation(sourceId: _requireSession.id.value);
+  Future<ChatwootConversation> createConversation({
+    Map<String, Object?> customAttributes = const {},
+  }) async {
+    final created = await _repository.createConversation(
+      sourceId: _requireSession.id.value,
+      customAttributes: customAttributes,
+    );
 
     await refreshConversations();
 
