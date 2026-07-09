@@ -434,6 +434,8 @@ class ChatwootClientImpl implements ChatwootClient {
     required ChatwootConversationId id,
   }) async {
     final sourceId = _requireSession.id.value;
+
+    final readDateTime = DateTime.now();
     await _handleConversationNotFound(
       conversationId: id,
       action: () => _repository.markConversationRead(
@@ -449,7 +451,7 @@ class ChatwootClientImpl implements ChatwootClient {
     try {
       final (updatedList, updated) = list.updateConversation(
         id,
-        updater: (c) => c.copyWith(lastReadTime: DateTime.now()),
+        updater: (c) => c.copyWith(lastReadTime: readDateTime),
       );
       _stateSubject.add(
         ChatwootState$Conversation$Updated(
