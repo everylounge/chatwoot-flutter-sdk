@@ -17,6 +17,7 @@ import 'package:chatwoot_sdk/client/domain/model/message/chatwoot_message.dart';
 import 'package:chatwoot_sdk/client/domain/model/session/authorization_creds.dart';
 import 'package:chatwoot_sdk/client/domain/model/session/chatwoot_contact.dart';
 import 'package:chatwoot_sdk/client/domain/model/session/chatwoot_session.dart';
+import 'package:chatwoot_sdk/client/domain/model/session/chatwoot_session_exception.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -126,8 +127,16 @@ class ChatwootClientImpl implements ChatwootClient {
     await _stopCableAndPresence();
     await _cable.disconnect();
 
-    ChatwootSession? session = await _repository.currentSession();
-    session ??= await _repository.authorize(_defaultCreds);
+    ChatwootSession session;
+
+    try {
+      final storedSession = await _repository.currentSession();
+
+      session = storedSession ?? await _repository.authorize(_defaultCreds);
+    } on ChatwootSessionException$ContactNotFound {
+      session = await _repository.authorize(_defaultCreds);
+    }
+
 
     await _attachSession(session);
     _hasBootstrapped = true;
@@ -147,7 +156,9 @@ class ChatwootClientImpl implements ChatwootClient {
         return;
       }
       if (_session case final session?) {
-        unawaited(_repository.markPresence(sourceId: session.id).catchError((Object _) {}));
+        unawaited(
+          _repository.markPresence(sourceId: session.id).catchError((Object _) {}),
+        );
       }
     });
   }
