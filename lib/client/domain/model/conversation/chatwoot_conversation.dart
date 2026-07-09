@@ -27,7 +27,7 @@ enum ChatwootConversationStatus {
 extension type ChatwootConversationId(int value) implements int {}
 
 @immutable
-class ChatwootConversation {
+class ChatwootConversation implements Comparable<ChatwootConversation> {
   /// Count of unread not outgoing messages.
   static int _unreadSupportMessageCount({
     required List<ChatwootMessage> messages,
@@ -98,5 +98,17 @@ class ChatwootConversation {
       supportTyping: supportTyping ?? this.supportTyping,
       lastReadTime: lastReadTime ?? this.lastReadTime,
     );
+  }
+  
+  @override
+  int compareTo(ChatwootConversation other) {
+    final lastMessage = messages.lastOrNull;
+    final otherLastMessage = other.messages.lastOrNull;
+
+    if (lastMessage == null && otherLastMessage == null) return id.compareTo(other.id);
+    if (lastMessage == null) return 1;
+    if (otherLastMessage == null) return -1;
+
+    return otherLastMessage.sentAt.compareTo(lastMessage.sentAt);
   }
 }

@@ -169,7 +169,10 @@ class ChatwootClientImpl implements ChatwootClient {
       sourceId: session.id.value,
       pubsubToken: session.token,
     );
-    final list = await _repository.fetchConversations(sourceId: session.id.value);
+    final list = await _repository.fetchConversations(
+      sourceId: session.id.value,
+    );
+    list.sort();
     _stateSubject.add(ChatwootState$ConversationsLoaded(conversations: list));
     await _cableSub?.cancel();
     _cableSub = _cable.events.listen(
@@ -201,8 +204,13 @@ class ChatwootClientImpl implements ChatwootClient {
   void _onCableEvent(ChatwootCableEvent event) async {
     try {
       switch (event) {
-        case ChatwootCableEvent$Message$Created(:final conversationId, :final message):
-          final list = List<ChatwootConversation>.from(_stateSubject.value.conversations);
+        case ChatwootCableEvent$Message$Created(
+          :final conversationId,
+          :final message,
+        ):
+          final list = List<ChatwootConversation>.from(
+            _stateSubject.value.conversations,
+          );
 
           final (updatedList, updated) = list.updateConversation(
             conversationId,
@@ -211,6 +219,8 @@ class ChatwootClientImpl implements ChatwootClient {
             },
           );
 
+          updatedList.sort();
+
           _stateSubject.add(
             ChatwootState$Message$New(
               conversations: updatedList,
@@ -218,8 +228,13 @@ class ChatwootClientImpl implements ChatwootClient {
               message: message,
             ),
           );
-        case ChatwootCableEvent$Message$Updated(:final conversationId, :final message):
-          final list = List<ChatwootConversation>.from(_stateSubject.value.conversations);
+        case ChatwootCableEvent$Message$Updated(
+          :final conversationId,
+          :final message,
+        ):
+          final list = List<ChatwootConversation>.from(
+            _stateSubject.value.conversations,
+          );
 
           switch (message) {
             case ChatwootMessage$Activity():
@@ -272,14 +287,14 @@ class ChatwootClientImpl implements ChatwootClient {
               }
           }
         case ChatwootCableEvent$ConversationStatusChanged(:final conversation):
-          final list = List<ChatwootConversation>.from(_stateSubject.value.conversations);
+          final list = List<ChatwootConversation>.from(
+            _stateSubject.value.conversations,
+          );
 
           final (updatedList, updated) = list.updateConversation(
             conversation.id,
             updater: (c) {
-              return c.copyWith(
-                status: conversation.status,
-              );
+              return c.copyWith(status: conversation.status);
             },
           );
 
@@ -290,7 +305,9 @@ class ChatwootClientImpl implements ChatwootClient {
             ),
           );
         case final ChatwootCableEvent$Typing typingEvent:
-          final list = List<ChatwootConversation>.from(_stateSubject.value.conversations);
+          final list = List<ChatwootConversation>.from(
+            _stateSubject.value.conversations,
+          );
 
           final (updatedList, updated) = list.updateConversation(
             typingEvent.conversationId,
@@ -333,6 +350,8 @@ class ChatwootClientImpl implements ChatwootClient {
   Future<void> refreshConversations() async {
     final id = _requireSession.id.value;
     final list = await _fetchConversations(sourceId: id);
+    list.sort();
+
     _stateSubject.add(ChatwootState$ConversationsLoaded(conversations: list));
   }
 
@@ -352,9 +371,7 @@ class ChatwootClientImpl implements ChatwootClient {
       customAttributes: customAttributes,
     );
 
-    _session = _requireSession.copyWith(
-      contact: updatedContact,
-    );
+    _session = _requireSession.copyWith(contact: updatedContact);
   }
 
   @override
@@ -372,9 +389,7 @@ class ChatwootClientImpl implements ChatwootClient {
   }
 
   @override
-  Future<void> resolveConversation({
-    required ChatwootConversationId id,
-  }) async {
+  Future<void> resolveConversation({required ChatwootConversationId id}) async {
     final sourceId = _requireSession.id.value;
     final result = await _handleConversationNotFound(
       conversationId: id,
@@ -384,9 +399,14 @@ class ChatwootClientImpl implements ChatwootClient {
       ),
     );
 
-    final list = List<ChatwootConversation>.from(_stateSubject.value.conversations);
+    final list = List<ChatwootConversation>.from(
+      _stateSubject.value.conversations,
+    );
     try {
-      final (updatedList, updated) = list.updateConversation(id, updater: (_) => result);
+      final (updatedList, updated) = list.updateConversation(
+        id,
+        updater: (_) => result,
+      );
       _stateSubject.add(
         ChatwootState$Conversation$Updated(
           conversations: updatedList,
@@ -411,7 +431,9 @@ class ChatwootClientImpl implements ChatwootClient {
       ),
     );
 
-    final list = List<ChatwootConversation>.from(_stateSubject.value.conversations);
+    final list = List<ChatwootConversation>.from(
+      _stateSubject.value.conversations,
+    );
 
     try {
       final (updatedList, updated) = list.updateConversation(
@@ -499,7 +521,9 @@ class ChatwootClientImpl implements ChatwootClient {
     }
   }
 
-  Future<void> _emitConversationDeletedIfPresent(ChatwootConversationId conversationId) async {
+  Future<void> _emitConversationDeletedIfPresent(
+    ChatwootConversationId conversationId,
+  ) async {
     if (!_hasConversation(conversationId) || _emittedConversationDeletedIds.contains(conversationId.value)) {
       return;
     }
@@ -508,8 +532,9 @@ class ChatwootClientImpl implements ChatwootClient {
     try {
       refreshed = await _fetchConversations(sourceId: _requireSession.id.value);
     } on Object {
-      refreshed = List<ChatwootConversation>.from(_stateSubject.value.conversations)
-        ..removeWhere((c) => c.id == conversationId);
+      refreshed = List<ChatwootConversation>.from(
+        _stateSubject.value.conversations,
+      )..removeWhere((c) => c.id == conversationId);
     }
 
     if (refreshed.any((c) => c.id == conversationId) || !_emittedConversationDeletedIds.add(conversationId.value)) {
@@ -541,7 +566,9 @@ class ChatwootClientImpl implements ChatwootClient {
         .fetchConversations(sourceId: sourceId)
         .then((list) {
           if (identical(_conversationsRefreshFuture, refresh)) {
-            _emittedConversationDeletedIds.removeAll(list.map((c) => c.id.value));
+            _emittedConversationDeletedIds.removeAll(
+              list.map((c) => c.id.value),
+            );
           }
           return list;
         })
@@ -630,6 +657,8 @@ extension on List<ChatwootConversation> {
 
     final updatedConversation = conversation.copyWith(messages: newMessages);
     conversations[conversationIndex] = updatedConversation;
+
+    conversations.sort();
 
     return (
       conversations: conversations,
