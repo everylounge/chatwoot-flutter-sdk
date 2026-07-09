@@ -45,7 +45,7 @@ class ChatwootState$Message$Updated extends ChatwootState$Message {
   final int messageIndex;
 }
 
-class ChatwootState$Conversation extends ChatwootState {
+sealed class ChatwootState$Conversation extends ChatwootState {
   const ChatwootState$Conversation({
     required super.conversations,
     required this.conversation,
@@ -68,4 +68,13 @@ class ChatwootState$Conversation$Deleted extends ChatwootState {
   });
 
   final ChatwootConversationId conversationId;
+}
+
+class ChatwootState$Conversation$Created extends ChatwootState {
+  const ChatwootState$Conversation$Created({
+    required super.conversations,
+    required this.conversation,
+  });
+
+  final ChatwootConversation conversation;
 }

@@ -160,6 +160,7 @@ class _ConversationListPageState extends State<ConversationListPage> {
       case ChatwootState$Message$Updated():
       case ChatwootState$Conversation():
       case ChatwootState$Conversation$Deleted():
+      case ChatwootState$Conversation$Created():
         return;
     }
   }

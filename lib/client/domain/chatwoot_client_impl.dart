@@ -394,7 +394,12 @@ class ChatwootClientImpl implements ChatwootClient {
       customAttributes: customAttributes,
     );
 
-    await refreshConversations();
+    _stateSubject.add(
+      ChatwootState$Conversation$Created(
+        conversations: [created, ...state.conversations],
+        conversation: created,
+      ),
+    );
 
     return created;
   }

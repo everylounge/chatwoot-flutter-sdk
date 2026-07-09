@@ -113,8 +113,8 @@ class _ConversationChatPageState extends State<ConversationChatPage> {
       case ChatwootState$Conversation(:final conversation) when conversation.id == widget.conversationId:
         _syncConversation(conversation);
       case ChatwootState$Conversation$Deleted():
-        return;
       case ChatwootState$Conversation():
+      case ChatwootState$Conversation$Created():
         return;
       case ChatwootState$Message$New(:final conversationId, :final message)
           when conversationId == widget.conversationId:
